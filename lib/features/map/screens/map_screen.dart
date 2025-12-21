@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/cart.dart';
+import '../services/location_service.dart';
 
 /// Main map screen showing carts and user location
 class MapScreen extends StatefulWidget {
@@ -13,6 +15,12 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   // Google Maps controller - lets us control the map programmatically
   GoogleMapController? _mapController;
+
+  // Location service
+  final LocationService _locationService = LocationService();
+
+  // User's current location
+  Position? _userPosition;
 
   // Cart data
   List<Cart> _carts = [];
@@ -30,6 +38,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _loadCarts();
+    _getUserLocation();
   }
 
   // Load mock cart data and create markers
@@ -68,6 +77,47 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  // Get user's current location
+  Future<void> _getUserLocation() async {
+    try {
+      Position? position = await _locationService.getCurrentLocation();
+
+      if (position != null) {
+        setState(() {
+          _userPosition = position;
+        });
+
+        // Center map on user's location with animation
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(position.latitude, position.longitude),
+            15.0, // Slightly closer zoom when centered on user
+          ),
+        );
+      } else {
+        // Permission denied or location unavailable
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission denied. Please enable in settings.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Handle any errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error getting location: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   // Called when the map is created
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
@@ -84,8 +134,8 @@ class _MapScreenState extends State<MapScreen> {
         onMapCreated: _onMapCreated,
         initialCameraPosition: _initialPosition,
         markers: _markers, // Display cart markers
-        myLocationButtonEnabled: true, // Shows location button
-        myLocationEnabled: false, // Will enable this when we add location permissions
+        myLocationButtonEnabled: true, // Shows recenter button (top right)
+        myLocationEnabled: true, // Shows blue dot for user location
         mapType: MapType.normal,
       ),
     );
