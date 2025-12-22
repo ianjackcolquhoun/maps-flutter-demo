@@ -1,31 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/cart.dart';
-import '../services/location_service.dart';
+import '../providers/ride_providers.dart';
 
 /// Main map screen showing carts and user location
-class MapScreen extends StatefulWidget {
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen> {
   // Google Maps controller - lets us control the map programmatically
   GoogleMapController? _mapController;
 
-  // Location service
-  final LocationService _locationService = LocationService();
-
-  // User's current location
-  Position? _userPosition;
-
-  // Cart data
-  List<Cart> _carts = [];
-
   // Markers to display on the map (Google Maps uses Set for performance)
+  // Built from cart data in providers
   Set<Marker> _markers = {};
 
   // Initial camera position - centered on Cincinnati
@@ -43,13 +36,16 @@ class _MapScreenState extends State<MapScreen> {
 
   // Load mock cart data and create markers
   void _loadCarts() {
-    _carts = Cart.getMockCarts();
+    // Carts are already initialized in cartsProvider
     _createMarkers();
   }
 
   // Convert Cart objects to Map Markers
   void _createMarkers() {
-    final markers = _carts.map((cart) {
+    // Read carts from provider
+    final carts = ref.read(cartsProvider);
+
+    final markers = carts.map((cart) {
       return Marker(
         markerId: MarkerId(cart.id),
         position: LatLng(cart.latitude, cart.longitude),
@@ -80,12 +76,13 @@ class _MapScreenState extends State<MapScreen> {
   // Get user's current location
   Future<void> _getUserLocation() async {
     try {
-      Position? position = await _locationService.getCurrentLocation();
+      // Get location service from provider
+      final locationService = ref.read(locationServiceProvider);
+      Position? position = await locationService.getCurrentLocation();
 
       if (position != null) {
-        setState(() {
-          _userPosition = position;
-        });
+        // Update position in provider (no setState needed)
+        ref.read(userPositionProvider.notifier).state = position;
 
         // Center map on user's location with animation
         _mapController?.animateCamera(

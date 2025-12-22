@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/map/screens/map_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    // ProviderScope enables Riverpod throughout the app
+    const ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
 /// Root application widget - configures theme and routing
