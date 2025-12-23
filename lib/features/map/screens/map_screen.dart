@@ -276,7 +276,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // Start animation stream
     final animationStream = animationService.animateCartAlongRoute(
       routePoints: route.polylinePoints,
-      speedMph: 15.0, // Base speed (will be 2x in service)
+      speedMph: 15.0, // Base speed (will be 6x in service)
       pickupWaypoint: route.waypoints[1], // User pickup location
     );
 
@@ -294,6 +294,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               status: RequestStatus.inProgress,
             );
 
+            // Center camera on cart once picked up - keep following for rest of ride
+            _followCart(state.position);
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -304,6 +307,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               );
             }
           }
+        }
+
+        // Keep following cart if ride is in progress
+        final request = ref.read(activeRequestProvider);
+        if (request != null && request.status == RequestStatus.inProgress) {
+          _followCart(state.position);
         }
 
         // Check if animation completed (reached stadium)
@@ -327,10 +336,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         }
       },
       onError: (error) {
-        print('Animation error: $error');
+        // Animation error - silently handled
       },
       onDone: () {
-        print('Animation stream closed');
+        // Animation stream closed
       },
     );
   }
@@ -346,6 +355,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     // Clear animated position
     ref.read(animatedCartPositionProvider.notifier).state = null;
+  }
+
+  // Follow cart with camera (simple, no interaction handling)
+  void _followCart(LatLng cartPosition) {
+    _mapController?.animateCamera(
+      CameraUpdate.newLatLngZoom(cartPosition, 17.0), // Zoom closer to cart
+    );
   }
 
   // Handle request pickup button tap

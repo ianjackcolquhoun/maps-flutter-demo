@@ -8,12 +8,15 @@ class CartAnimationService {
   StreamController<CartAnimationState>? _stateController;
   bool _isPaused = false;
 
-  /// Debug speed multiplier (2x = twice as fast)
-  /// Set to 1.0 for realistic speed, 2.0 for demo (default), 5.0 for quick testing
-  static const double speedMultiplier = 2.0;
+  /// Debug speed multiplier (4x = four times as fast)
+  /// Set to 1.0 for realistic speed, 2.0 for demo, 4.0 for faster demo (default)
+  static const double speedMultiplier = 8.0;
 
   /// How long to pause at pickup location (seconds)
   static const int pickupPauseDuration = 5;
+
+  /// Update frequency in milliseconds (100ms = 10 updates per second for smooth animation)
+  static const int updateIntervalMs = 100;
 
   /// Animate cart along route at realistic speed
   ///
@@ -40,14 +43,15 @@ class CartAnimationService {
           Route.calculateDistance(routePoints[i], routePoints[i + 1]);
     }
 
-    // Apply speed multiplier (2x realistic speed for demo)
+    // Apply speed multiplier (4x realistic speed for demo)
     final adjustedSpeedMph = speedMph * speedMultiplier;
 
     // Convert speed to meters per second
     final speedMps = adjustedSpeedMph * 0.44704; // mph to m/s
 
-    // How far cart moves per update (every 1 second)
-    final distancePerUpdate = speedMps * 1.0; // meters
+    // How far cart moves per update (based on update interval)
+    final updateIntervalSeconds = updateIntervalMs / 1000.0;
+    final distancePerUpdate = speedMps * updateIntervalSeconds; // meters
 
     // Track progress
     double currentDistance = 0;
@@ -55,8 +59,8 @@ class CartAnimationService {
     bool hasReachedPickup = false;
     DateTime? pickupPauseStartTime;
 
-    // Update every 1 second
-    _animationTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+    // Update at configured interval (100ms = smooth animation)
+    _animationTimer = Timer.periodic(Duration(milliseconds: updateIntervalMs), (timer) {
       // Handle pickup pause
       if (_isPaused && pickupPauseStartTime != null) {
         final pauseDuration = DateTime.now().difference(pickupPauseStartTime!);

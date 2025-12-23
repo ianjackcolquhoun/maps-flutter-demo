@@ -64,6 +64,13 @@ final animatedCartPositionProvider = StateProvider<LatLng?>((ref) {
   return null; // No animated position initially
 });
 
+/// Provider for camera following state
+/// When true, camera automatically follows the animated cart
+/// When false, user has manually panned/zoomed and camera stays put
+final isFollowingCartProvider = StateProvider<bool>((ref) {
+  return true; // Start following when animation begins
+});
+
 // Example of reading providers:
 //
 // In a ConsumerWidget:

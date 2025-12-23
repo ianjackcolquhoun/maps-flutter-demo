@@ -57,7 +57,7 @@ class LocationService {
       return position;
     } catch (e) {
       // Handle any errors (e.g., timeout, location unavailable)
-      print('Error getting location: $e');
+      // Return null to indicate location unavailable
       return null;
     }
   }

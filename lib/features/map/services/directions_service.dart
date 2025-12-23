@@ -45,11 +45,9 @@ class DirectionsService {
       }
 
       // No points returned - API failed
-      print('Directions API returned no points');
       return null;
     } catch (e) {
-      // API call failed
-      print('Directions API error: $e');
+      // API call failed - return null
       return null;
     }
   }
