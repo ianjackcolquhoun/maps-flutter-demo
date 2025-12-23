@@ -1,11 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/cart.dart';
+import '../models/ride_request.dart';
 import '../services/location_service.dart';
+import '../services/assignment_service.dart';
 
 /// Provider for LocationService - single instance shared across app
 final locationServiceProvider = Provider<LocationService>((ref) {
   return LocationService();
+});
+
+/// Provider for AssignmentService - handles cart assignment logic
+final assignmentServiceProvider = Provider<AssignmentService>((ref) {
+  return AssignmentService();
 });
 
 /// Provider for user's current position
@@ -25,9 +32,10 @@ final selectedCartProvider = StateProvider<Cart?>((ref) {
   return null; // No cart selected initially
 });
 
-/// Provider for tracking if user has an active ride request
-final hasActiveRequestProvider = StateProvider<bool>((ref) {
-  return false; // No active request initially
+/// Provider for the current active ride request
+/// null when no active request
+final activeRequestProvider = StateProvider<RideRequest?>((ref) {
+  return null; // No active request initially
 });
 
 // Example of reading providers:
