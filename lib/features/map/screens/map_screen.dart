@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/geo_utils.dart';
 import '../models/cart.dart';
 import '../providers/ride_providers.dart';
 
@@ -21,17 +23,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Built from cart data in providers
   Set<Marker> _markers = {};
 
-  // Initial camera position - centered on Cincinnati
-  static const CameraPosition _initialPosition = CameraPosition(
-    target: LatLng(39.1031, -84.5120), // Cincinnati coordinates
-    zoom: 14.0, // Good zoom level to see streets
-  );
+  // Polygons to display on the map (service area boundary)
+  Set<Polygon> _polygons = {};
 
   @override
   void initState() {
     super.initState();
+    _createServiceArea();
     _loadCarts();
     _getUserLocation();
+  }
+
+  // Create service area polygon
+  void _createServiceArea() {
+    final serviceAreaPolygon = Polygon(
+      polygonId: const PolygonId('service_area'),
+      points: AppConstants.serviceAreaBoundary,
+      fillColor: AppConstants.serviceAreaFillColor,
+      strokeColor: AppConstants.serviceAreaBorderColor,
+      strokeWidth: AppConstants.serviceAreaBorderWidth.toInt(),
+    );
+
+    setState(() {
+      _polygons = {serviceAreaPolygon};
+    });
   }
 
   // Load mock cart data and create markers
@@ -45,11 +60,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // Read carts from provider
     final carts = ref.read(cartsProvider);
 
-    final markers = carts.map((cart) {
+    // Create cart markers
+    final cartMarkers = carts.map((cart) {
       return Marker(
         markerId: MarkerId(cart.id),
         position: LatLng(cart.latitude, cart.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+        icon: BitmapDescriptor.defaultMarkerWithHue(AppConstants.cartMarkerHue),
         infoWindow: InfoWindow(
           title: cart.name,
           snippet: 'Tap for details',
@@ -58,8 +74,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       );
     }).toSet();
 
+    // Create stadium marker
+    final stadiumMarker = Marker(
+      markerId: const MarkerId('stadium'),
+      position: AppConstants.stadiumLocation,
+      icon: BitmapDescriptor.defaultMarkerWithHue(AppConstants.stadiumMarkerHue),
+      infoWindow: const InfoWindow(
+        title: 'Great American Ball Park',
+        snippet: 'Destination',
+      ),
+    );
+
     setState(() {
-      _markers = markers;
+      _markers = {...cartMarkers, stadiumMarker};
     });
   }
 
@@ -84,6 +111,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         // Update position in provider (no setState needed)
         ref.read(userPositionProvider.notifier).state = position;
 
+        // Check if user is inside service area
+        final userLatLng = LatLng(position.latitude, position.longitude);
+        final isInServiceArea = GeoUtils.isPointInPolygon(
+          userLatLng,
+          AppConstants.serviceAreaBoundary,
+        );
+
         // Center map on user's location with animation
         _mapController?.animateCamera(
           CameraUpdate.newLatLngZoom(
@@ -91,6 +125,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             15.0, // Slightly closer zoom when centered on user
           ),
         );
+
+        // Show message if outside service area
+        if (!isInServiceArea && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('You are outside the service area. We only serve downtown Cincinnati.'),
+              duration: Duration(seconds: 4),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       } else {
         // Permission denied or location unavailable
         if (mounted) {
@@ -129,8 +174,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
       body: GoogleMap(
         onMapCreated: _onMapCreated,
-        initialCameraPosition: _initialPosition,
-        markers: _markers, // Display cart markers
+        initialCameraPosition: AppConstants.initialCameraPosition,
+        markers: _markers, // Display cart and stadium markers
+        polygons: _polygons, // Display service area boundary
         myLocationButtonEnabled: true, // Shows recenter button (top right)
         myLocationEnabled: true, // Shows blue dot for user location
         mapType: MapType.normal,
