@@ -53,23 +53,26 @@ class AssignmentService {
     );
   }
 
-  /// Create a route for a cart to follow
+  /// Create a route for a cart to follow using real roads
   ///
   /// Waypoints: [cart location] -> [pickup location] -> [stadium]
-  Route createRoute({
+  /// Returns null if unable to fetch route from Directions API
+  Future<Route?> createRoute({
     required String cartId,
     required LatLng cartLocation,
     required LatLng pickupLocation,
-  }) {
+    required String apiKey,
+  }) async {
     final waypoints = [
-      cartLocation,      // Start at cart's current location
-      pickupLocation,    // Pick up user
+      cartLocation, // Start at cart's current location
+      pickupLocation, // Pick up user
       AppConstants.stadiumLocation, // Drop off at stadium
     ];
 
-    return Route.fromWaypoints(
+    return await Route.createRoute(
       id: '${cartId}_route_${DateTime.now().millisecondsSinceEpoch}',
       waypoints: waypoints,
+      apiKey: apiKey,
       averageSpeedMph: 15.0, // Golf cart average speed
     );
   }

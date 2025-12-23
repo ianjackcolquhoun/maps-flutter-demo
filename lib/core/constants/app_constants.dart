@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'secrets.dart';
 
 /// Application-wide constants
 class AppConstants {
   // Prevent instantiation
   AppConstants._();
+
+  /// Google Maps API Key (imported from secrets.dart)
+  /// This key is used for:
+  /// - Directions API (route calculation)
+  /// Note: Maps SDK for iOS also needs this key in ios/Runner/AppDelegate.swift
+  static const String googleMapsApiKey = Secrets.googleMapsApiKey;
 
   /// Service area boundary polygon - Downtown Cincinnati
   /// This defines the area where ride requests are accepted

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../services/directions_service.dart';
 
 /// Represents a route for a cart to follow
 /// Includes waypoints (stops) and detailed path for visualization
@@ -28,25 +29,42 @@ class Route {
     return estimatedDistanceMeters * 0.000621371;
   }
 
-  /// Create a simple route from waypoints
-  /// For MVP, we'll create straight lines between points
-  factory Route.fromWaypoints({
+  /// Create a route using Google Directions API (real roads)
+  ///
+  /// Returns null if unable to fetch route from API
+  static Future<Route?> createRoute({
     required String id,
     required List<LatLng> waypoints,
-    double averageSpeedMph = 15.0, // Average cart speed
-  }) {
-    // For MVP, polyline points are just the waypoints
-    // In production, you'd use Google Directions API for actual roads
-    final polylinePoints = waypoints;
+    required String apiKey,
+    double averageSpeedMph = 15.0,
+  }) async {
+    if (waypoints.length < 2) {
+      return null; // Need at least origin and destination
+    }
 
-    // Calculate total distance
+    final directionsService = DirectionsService();
+
+    // Fetch real road route from Google Directions API
+    final polylinePoints = await directionsService.getRoutePolyline(
+      origin: waypoints.first,
+      destination: waypoints.last,
+      waypoints:
+          waypoints.length > 2 ? waypoints.sublist(1, waypoints.length - 1) : null,
+      apiKey: apiKey,
+    );
+
+    // Return null if API failed
+    if (polylinePoints == null || polylinePoints.isEmpty) {
+      return null;
+    }
+
+    // Calculate total distance using polyline points
     double totalDistance = 0;
-    for (int i = 0; i < waypoints.length - 1; i++) {
-      totalDistance += calculateDistance(waypoints[i], waypoints[i + 1]);
+    for (int i = 0; i < polylinePoints.length - 1; i++) {
+      totalDistance += calculateDistance(polylinePoints[i], polylinePoints[i + 1]);
     }
 
     // Calculate estimated duration based on distance and speed
-    // Convert mph to meters per second: mph * 0.44704
     final speedMetersPerSecond = averageSpeedMph * 0.44704;
     final estimatedSeconds = (totalDistance / speedMetersPerSecond).round();
 

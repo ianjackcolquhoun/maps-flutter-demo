@@ -294,32 +294,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       return;
     }
 
-    // 7. Calculate ETA
-    final eta = assignmentService.calculateETA(nearestCart, userLatLng);
-
-    // 8. Create route from cart -> user -> stadium
+    // 7. Create route from cart -> user -> stadium (using real roads)
     final cartLocation = LatLng(nearestCart.latitude, nearestCart.longitude);
-    final route = assignmentService.createRoute(
+    final route = await assignmentService.createRoute(
       cartId: nearestCart.id,
       cartLocation: cartLocation,
       pickupLocation: userLatLng,
+      apiKey: AppConstants.googleMapsApiKey,
     );
 
-    // 9. Create ride request
+    // 8. Check if route was successfully created
+    if (route == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to calculate route. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return; // Don't create request if route failed
+    }
+
+    // 9. Calculate ETA
+    final eta = route.estimatedDurationMinutes;
+
+    // 10. Create ride request
     final request = assignmentService.createRequest(
       pickupLocation: userLatLng,
       partySize: 1,
       assignedCartId: nearestCart.id,
     );
 
-    // 10. Update providers
+    // 11. Update providers
     ref.read(activeRequestProvider.notifier).state = request.copyWith(
       status: RequestStatus.assigned,
     );
     ref.read(selectedCartProvider.notifier).state = nearestCart;
     ref.read(activeRouteProvider.notifier).state = route;
 
-    // 11. Show success message
+    // 12. Show success message
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -89,6 +89,7 @@ unlinked_spec.ds
 
 # API Keys and Secrets
 **/ios/Runner/AppDelegate.swift
+lib/core/constants/secrets.dart
 
 # macOS
 **/Flutter/ephemeral/
