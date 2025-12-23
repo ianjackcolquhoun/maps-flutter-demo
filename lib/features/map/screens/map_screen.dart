@@ -8,6 +8,7 @@ import '../../../core/utils/geo_utils.dart';
 import '../models/cart.dart';
 import '../models/ride_request.dart';
 import '../providers/ride_providers.dart';
+import '../widgets/cart_info_card.dart';
 
 /// Main map screen showing carts and user location
 class MapScreen extends ConsumerStatefulWidget {
@@ -27,6 +28,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Polygons to display on the map (service area boundary)
   Set<Polygon> _polygons = {};
+
+  // Polylines to display on the map (route visualization)
+  Set<Polyline> _polylines = {};
 
   // Location stream subscription
   StreamSubscription<Position>? _positionStreamSubscription;
@@ -201,9 +205,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final activeRequest = ref.read(activeRequestProvider);
 
     if (activeRequest != null) {
-      // Clear the active request and selected cart
+      // Clear the active request, selected cart, and route
       ref.read(activeRequestProvider.notifier).state = null;
       ref.read(selectedCartProvider.notifier).state = null;
+      ref.read(activeRouteProvider.notifier).state = null;
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -292,20 +297,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // 7. Calculate ETA
     final eta = assignmentService.calculateETA(nearestCart, userLatLng);
 
-    // 8. Create ride request
+    // 8. Create route from cart -> user -> stadium
+    final cartLocation = LatLng(nearestCart.latitude, nearestCart.longitude);
+    final route = assignmentService.createRoute(
+      cartId: nearestCart.id,
+      cartLocation: cartLocation,
+      pickupLocation: userLatLng,
+    );
+
+    // 9. Create ride request
     final request = assignmentService.createRequest(
       pickupLocation: userLatLng,
       partySize: 1,
       assignedCartId: nearestCart.id,
     );
 
-    // 9. Update providers
+    // 10. Update providers
     ref.read(activeRequestProvider.notifier).state = request.copyWith(
       status: RequestStatus.assigned,
     );
     ref.read(selectedCartProvider.notifier).state = nearestCart;
+    ref.read(activeRouteProvider.notifier).state = route;
 
-    // 10. Show success message
+    // 11. Show success message
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -322,6 +336,21 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // Watch providers for button state
     final userPos = ref.watch(userPositionProvider);
     final activeRequest = ref.watch(activeRequestProvider);
+    final activeRoute = ref.watch(activeRouteProvider);
+
+    // Update polylines when route changes
+    if (activeRoute != null) {
+      final routePolyline = Polyline(
+        polylineId: const PolylineId('active_route'),
+        points: activeRoute.polylinePoints,
+        color: Colors.blue.shade700, // Darker, more visible blue
+        width: 5, // Thicker line
+        // Solid line (no patterns) for better visibility
+      );
+      _polylines = {routePolyline};
+    } else {
+      _polylines = {};
+    }
 
     // Determine button state and action
     VoidCallback? buttonAction;
@@ -357,19 +386,40 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     }
 
+    // Get selected cart and route for info card
+    final selectedCart = ref.watch(selectedCartProvider);
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Cart Tracker'),
       ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        initialCameraPosition: AppConstants.initialCameraPosition,
-        markers: _markers, // Display cart and stadium markers
-        polygons: _polygons, // Display service area boundary
-        myLocationButtonEnabled: true, // Shows recenter button (top right)
-        myLocationEnabled: true, // Shows blue dot for user location
-        mapType: MapType.normal,
+      body: Stack(
+        children: [
+          // Map
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            initialCameraPosition: AppConstants.initialCameraPosition,
+            markers: _markers, // Display cart and stadium markers
+            polygons: _polygons, // Display service area boundary
+            polylines: _polylines, // Display route line
+            myLocationButtonEnabled: true, // Shows recenter button (top right)
+            myLocationEnabled: true, // Shows blue dot for user location
+            mapType: MapType.normal,
+          ),
+          // Info card (shown when ride is active)
+          if (activeRequest != null && activeRoute != null && selectedCart != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0, // At the top below app bar
+              child: CartInfoCard(
+                cart: selectedCart,
+                request: activeRequest,
+                route: activeRoute,
+              ),
+            ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: buttonAction,

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/cart.dart';
 import '../models/ride_request.dart';
+import '../models/route.dart';
 import '../services/location_service.dart';
 import '../services/assignment_service.dart';
 
@@ -36,6 +37,12 @@ final selectedCartProvider = StateProvider<Cart?>((ref) {
 /// null when no active request
 final activeRequestProvider = StateProvider<RideRequest?>((ref) {
   return null; // No active request initially
+});
+
+/// Provider for the current active route
+/// null when no active route
+final activeRouteProvider = StateProvider<Route?>((ref) {
+  return null; // No active route initially
 });
 
 // Example of reading providers:
