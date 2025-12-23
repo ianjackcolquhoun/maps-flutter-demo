@@ -45,12 +45,12 @@ class CartInfoCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.green.shade100,
+                    color: _getStatusColor(request.status).withOpacity(0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     Icons.golf_course,
-                    color: Colors.green.shade700,
+                    color: _getStatusColor(request.status),
                     size: 28,
                   ),
                 ),
@@ -69,7 +69,7 @@ class CartInfoCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        request.statusText,
+                        _getStatusMessage(request.status),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey.shade600,
@@ -169,13 +169,13 @@ class CartInfoCard extends StatelessWidget {
   Color _getStatusColor(RequestStatus status) {
     switch (status) {
       case RequestStatus.pending:
-        return Colors.orange;
-      case RequestStatus.assigned:
-        return Colors.blue;
-      case RequestStatus.inProgress:
-        return Colors.green;
-      case RequestStatus.completed:
         return Colors.grey;
+      case RequestStatus.assigned:
+        return Colors.orange; // En route to pickup
+      case RequestStatus.inProgress:
+        return Colors.blue; // Taking you to stadium
+      case RequestStatus.completed:
+        return Colors.green; // Arrived!
       case RequestStatus.cancelled:
         return Colors.red;
     }
@@ -184,15 +184,30 @@ class CartInfoCard extends StatelessWidget {
   String _getStatusLabel(RequestStatus status) {
     switch (status) {
       case RequestStatus.pending:
-        return 'Finding...';
+        return 'Pending';
       case RequestStatus.assigned:
-        return 'Assigned';
+        return 'En Route';
       case RequestStatus.inProgress:
-        return 'In Progress';
+        return 'In Transit';
       case RequestStatus.completed:
         return 'Completed';
       case RequestStatus.cancelled:
         return 'Cancelled';
+    }
+  }
+
+  String _getStatusMessage(RequestStatus status) {
+    switch (status) {
+      case RequestStatus.pending:
+        return 'Finding nearest cart...';
+      case RequestStatus.assigned:
+        return 'Cart is coming to pick you up';
+      case RequestStatus.inProgress:
+        return 'Heading to Great American Ball Park';
+      case RequestStatus.completed:
+        return 'Arrived at stadium. Enjoy the game!';
+      case RequestStatus.cancelled:
+        return 'Request cancelled';
     }
   }
 }

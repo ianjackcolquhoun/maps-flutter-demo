@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/cart.dart';
 import '../models/ride_request.dart';
 import '../models/route.dart';
 import '../services/location_service.dart';
 import '../services/assignment_service.dart';
+import '../services/cart_animation_service.dart';
 
 /// Provider for LocationService - single instance shared across app
 final locationServiceProvider = Provider<LocationService>((ref) {
@@ -43,6 +45,23 @@ final activeRequestProvider = StateProvider<RideRequest?>((ref) {
 /// null when no active route
 final activeRouteProvider = StateProvider<Route?>((ref) {
   return null; // No active route initially
+});
+
+/// Provider for CartAnimationService - handles cart movement animation
+final cartAnimationServiceProvider = Provider<CartAnimationService>((ref) {
+  final service = CartAnimationService();
+  // Clean up when provider is disposed
+  ref.onDispose(() {
+    service.dispose();
+  });
+  return service;
+});
+
+/// Provider for the animated cart position
+/// Updated in real-time as cart moves along route
+/// null when no animation is running
+final animatedCartPositionProvider = StateProvider<LatLng?>((ref) {
+  return null; // No animated position initially
 });
 
 // Example of reading providers:

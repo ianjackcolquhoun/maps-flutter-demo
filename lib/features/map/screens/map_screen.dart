@@ -7,7 +7,9 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../models/cart.dart';
 import '../models/ride_request.dart';
+import '../models/route.dart' as route_model;
 import '../providers/ride_providers.dart';
+import '../services/cart_animation_service.dart';
 import '../widgets/cart_info_card.dart';
 
 /// Main map screen showing carts and user location
@@ -34,6 +36,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Location stream subscription
   StreamSubscription<Position>? _positionStreamSubscription;
+
+  // Cart animation stream subscription
+  StreamSubscription? _animationStreamSubscription;
 
   @override
   void initState() {
@@ -68,16 +73,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void _createMarkers() {
     // Read carts from provider
     final carts = ref.read(cartsProvider);
+    final selectedCart = ref.read(selectedCartProvider);
+    final animatedPosition = ref.read(animatedCartPositionProvider);
 
     // Create cart markers
     final cartMarkers = carts.map((cart) {
+      // Use animated position for selected cart if animation is running
+      final position = (cart.id == selectedCart?.id && animatedPosition != null)
+          ? animatedPosition
+          : LatLng(cart.latitude, cart.longitude);
+
+      // Highlight selected cart with different color
+      final markerHue = (cart.id == selectedCart?.id)
+          ? BitmapDescriptor.hueOrange // Active cart in orange
+          : AppConstants.cartMarkerHue; // Available carts in green
+
+      final snippet = (cart.id == selectedCart?.id) ? 'En route' : 'Available';
+
       return Marker(
         markerId: MarkerId(cart.id),
-        position: LatLng(cart.latitude, cart.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(AppConstants.cartMarkerHue),
+        position: position, // Dynamic position for active cart
+        icon: BitmapDescriptor.defaultMarkerWithHue(markerHue),
         infoWindow: InfoWindow(
           title: cart.name,
-          snippet: 'Tap for details',
+          snippet: snippet,
         ),
         onTap: () => _onCartTapped(cart),
       );
@@ -192,6 +211,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   void dispose() {
     // Cancel location stream when widget is disposed
     _positionStreamSubscription?.cancel();
+    // Cancel animation stream when widget is disposed
+    _animationStreamSubscription?.cancel();
     super.dispose();
   }
 
@@ -205,6 +226,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final activeRequest = ref.read(activeRequestProvider);
 
     if (activeRequest != null) {
+      // Stop animation
+      _stopCartAnimation();
+
       // Clear the active request, selected cart, and route
       ref.read(activeRequestProvider.notifier).state = null;
       ref.read(selectedCartProvider.notifier).state = null;
@@ -220,6 +244,108 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
       }
     }
+  }
+
+  // Handle exit button (after ride completes)
+  void _onExit() {
+    // Stop any running animation
+    _stopCartAnimation();
+
+    // Clear all ride state
+    ref.read(activeRequestProvider.notifier).state = null;
+    ref.read(selectedCartProvider.notifier).state = null;
+    ref.read(activeRouteProvider.notifier).state = null;
+    ref.read(animatedCartPositionProvider.notifier).state = null;
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ready for next ride!'),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  // Start cart animation along route
+  void _startCartAnimation(Cart cart, route_model.Route route) {
+    // Get animation service
+    final animationService = ref.read(cartAnimationServiceProvider);
+
+    // Start animation stream
+    final animationStream = animationService.animateCartAlongRoute(
+      routePoints: route.polylinePoints,
+      speedMph: 15.0, // Base speed (will be 2x in service)
+      pickupWaypoint: route.waypoints[1], // User pickup location
+    );
+
+    // Listen to animation state updates
+    _animationStreamSubscription = animationStream.listen(
+      (CartAnimationState state) {
+        // Update animated position
+        ref.read(animatedCartPositionProvider.notifier).state = state.position;
+
+        // Check if cart reached pickup (transition to inProgress)
+        if (state.hasReachedPickup) {
+          final request = ref.read(activeRequestProvider);
+          if (request != null && request.status == RequestStatus.assigned) {
+            ref.read(activeRequestProvider.notifier).state = request.copyWith(
+              status: RequestStatus.inProgress,
+            );
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Picked up! Heading to stadium...'),
+                  backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        }
+
+        // Check if animation completed (reached stadium)
+        if (state.isComplete) {
+          final request = ref.read(activeRequestProvider);
+          if (request != null) {
+            ref.read(activeRequestProvider.notifier).state = request.copyWith(
+              status: RequestStatus.completed,
+            );
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ride completed! Enjoy the game! 🎉'),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        }
+      },
+      onError: (error) {
+        print('Animation error: $error');
+      },
+      onDone: () {
+        print('Animation stream closed');
+      },
+    );
+  }
+
+  // Stop cart animation
+  void _stopCartAnimation() {
+    // Cancel stream subscription
+    _animationStreamSubscription?.cancel();
+    _animationStreamSubscription = null;
+
+    // Stop animation service
+    ref.read(cartAnimationServiceProvider).stopAnimation();
+
+    // Clear animated position
+    ref.read(animatedCartPositionProvider.notifier).state = null;
   }
 
   // Handle request pickup button tap
@@ -334,7 +460,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ref.read(selectedCartProvider.notifier).state = nearestCart;
     ref.read(activeRouteProvider.notifier).state = route;
 
-    // 12. Show success message
+    // 12. Start cart animation
+    _startCartAnimation(nearestCart, route);
+
+    // 13. Show success message
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -352,6 +481,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final userPos = ref.watch(userPositionProvider);
     final activeRequest = ref.watch(activeRequestProvider);
     final activeRoute = ref.watch(activeRouteProvider);
+
+    // Watch animated position to trigger marker rebuild
+    ref.watch(animatedCartPositionProvider);
+
+    // Rebuild markers when animated position changes
+    _createMarkers();
 
     // Update polylines when route changes
     if (activeRoute != null) {
@@ -378,11 +513,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       buttonColor = Colors.grey;
       buttonAction = null;
     } else if (activeRequest != null) {
-      // Active request - show cancel button
-      buttonText = 'Cancel Request';
-      buttonColor = Colors.red;
-      buttonIcon = Icons.cancel;
-      buttonAction = _onCancelRequest;
+      // Check if ride is completed
+      if (activeRequest.status == RequestStatus.completed) {
+        buttonText = 'Exit';
+        buttonColor = Colors.blue;
+        buttonIcon = Icons.exit_to_app;
+        buttonAction = _onExit;
+      } else {
+        // Active request - show cancel button
+        buttonText = 'Cancel Request';
+        buttonColor = Colors.red;
+        buttonIcon = Icons.cancel;
+        buttonAction = _onCancelRequest;
+      }
     } else {
       final userLatLng = LatLng(userPos.latitude, userPos.longitude);
       final isInServiceArea = GeoUtils.isPointInPolygon(

@@ -91,6 +91,10 @@ unlinked_spec.ds
 **/ios/Runner/AppDelegate.swift
 lib/core/constants/secrets.dart
 
+# Personal Development Notes
+PROGRESS.md
+LEARNINGS.md
+
 # macOS
 **/Flutter/ephemeral/
 **/Pods/
