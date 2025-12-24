@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/map_styles.dart';
 import '../../../core/utils/geo_utils.dart';
 import '../models/cart.dart';
 import '../models/ride_request.dart';
@@ -40,11 +42,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Cart animation stream subscription
   StreamSubscription? _animationStreamSubscription;
 
+  // Map style (loaded from assets)
+  String? _mapStyle;
+
+  // Dark mode toggle
+  bool _isDarkMode = false;
+
+  // Custom car icons for markers
+  BitmapDescriptor? _greenCarIcon;
+  BitmapDescriptor? _orangeCarIcon;
+  BitmapDescriptor? _stadiumIcon;
+
   @override
   void initState() {
     super.initState();
     _createServiceArea();
+    _createCarIcons();
     _loadCarts();
+    _loadMapStyle();
     _getUserLocation();
   }
 
@@ -61,6 +76,91 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     setState(() {
       _polygons = {serviceAreaPolygon};
     });
+  }
+
+  // Create custom car icons from Material Icons
+  Future<void> _createCarIcons() async {
+    _greenCarIcon = await _createIconFromWidget(
+      Icons.directions_car,
+      Colors.deepPurple,
+      30.0,
+    );
+    _orangeCarIcon = await _createIconFromWidget(
+      Icons.directions_car,
+      Colors.deepPurple.shade900,
+      30.0,
+    );
+    _stadiumIcon = await _createIconFromWidget(
+      Icons.sports_baseball,
+      Colors.red.shade200, // Pastel red
+      40.0,
+    );
+    setState(() {});
+  }
+
+  // Helper method to convert Material Icon to BitmapDescriptor
+  Future<BitmapDescriptor> _createIconFromWidget(
+    IconData iconData,
+    Color color,
+    double size,
+  ) async {
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+
+    // Draw a circle background
+    final paint = Paint()..color = Colors.white;
+    final radius = size / 2;
+    canvas.drawCircle(Offset(radius, radius), radius, paint);
+
+    // Draw the icon
+    final textPainter = TextPainter(textDirection: TextDirection.ltr);
+    textPainter.text = TextSpan(
+      text: String.fromCharCode(iconData.codePoint),
+      style: TextStyle(
+        fontSize: size * 0.7,
+        fontFamily: iconData.fontFamily,
+        color: color,
+      ),
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(
+        (size - textPainter.width) / 2,
+        (size - textPainter.height) / 2,
+      ),
+    );
+
+    // Convert to image
+    final picture = pictureRecorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.bytes(bytes!.buffer.asUint8List());
+  }
+
+  // Load custom map style from assets
+  Future<void> _loadMapStyle() async {
+    try {
+      final style = _isDarkMode
+          ? await MapStyles.loadDarkStyle()
+          : await MapStyles.loadCleanMinimalStyle();
+      setState(() {
+        _mapStyle = style;
+      });
+    } catch (e) {
+      // If style fails to load, map will use default style
+      // No need to show error to user for styling failure
+      debugPrint('Failed to load map style: $e');
+    }
+  }
+
+  // Toggle between light and dark map themes
+  Future<void> _toggleMapTheme() async {
+    setState(() {
+      _isDarkMode = !_isDarkMode;
+    });
+    await _loadMapStyle();
   }
 
   // Load mock cart data and create markers
@@ -83,17 +183,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ? animatedPosition
           : LatLng(cart.latitude, cart.longitude);
 
-      // Highlight selected cart with different color
-      final markerHue = (cart.id == selectedCart?.id)
-          ? BitmapDescriptor.hueOrange // Active cart in orange
-          : AppConstants.cartMarkerHue; // Available carts in green
+      // Use custom car icons if loaded, otherwise fall back to default
+      final isSelected = cart.id == selectedCart?.id;
+      final markerIcon = isSelected
+          ? (_orangeCarIcon ?? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange))
+          : (_greenCarIcon ?? BitmapDescriptor.defaultMarkerWithHue(AppConstants.cartMarkerHue));
 
-      final snippet = (cart.id == selectedCart?.id) ? 'En route' : 'Available';
+      final snippet = isSelected ? 'En route' : 'Available';
 
       return Marker(
         markerId: MarkerId(cart.id),
         position: position, // Dynamic position for active cart
-        icon: BitmapDescriptor.defaultMarkerWithHue(markerHue),
+        icon: markerIcon,
         infoWindow: InfoWindow(
           title: cart.name,
           snippet: snippet,
@@ -106,7 +207,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final stadiumMarker = Marker(
       markerId: const MarkerId('stadium'),
       position: AppConstants.stadiumLocation,
-      icon: BitmapDescriptor.defaultMarkerWithHue(AppConstants.stadiumMarkerHue),
+      icon: _stadiumIcon ?? BitmapDescriptor.defaultMarkerWithHue(AppConstants.stadiumMarkerHue),
       infoWindow: const InfoWindow(
         title: 'Great American Ball Park',
         snippet: 'Destination',
@@ -158,10 +259,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
         if (!isInServiceArea && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('You are outside the service area. We only serve downtown Cincinnati.'),
-              duration: Duration(seconds: 4),
-              backgroundColor: Colors.orange,
+            SnackBar(
+              content: const Text('You are outside the service area. We only serve downtown Cincinnati.'),
+              duration: const Duration(seconds: 4),
+              backgroundColor: Colors.purple.shade300,
             ),
           );
         }
@@ -236,10 +337,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Request cancelled'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: const Text('Request cancelled'),
+            backgroundColor: Colors.purple.shade300,
+            duration: const Duration(seconds: 2),
           ),
         );
       }
@@ -259,10 +360,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ready for next ride!'),
-          backgroundColor: Colors.blue,
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: const Text('Ready for next ride!'),
+          backgroundColor: Colors.deepPurple,
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -299,10 +400,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Picked up! Heading to stadium...'),
-                  backgroundColor: Colors.blue,
-                  duration: Duration(seconds: 2),
+                SnackBar(
+                  content: const Text('Picked up! Heading to stadium...'),
+                  backgroundColor: Colors.deepPurple,
+                  duration: const Duration(seconds: 2),
                 ),
               );
             }
@@ -325,10 +426,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Ride completed! Enjoy the game! 🎉'),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 3),
+                SnackBar(
+                  content: const Text('Ride completed! Enjoy the game! 🎉'),
+                  backgroundColor: Colors.deepPurple.shade700,
+                  duration: const Duration(seconds: 3),
                 ),
               );
             }
@@ -372,9 +473,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (userPos == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Waiting for your location...'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('Waiting for your location...'),
+            backgroundColor: Colors.purple.shade300,
           ),
         );
       }
@@ -406,9 +507,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (activeRequest != null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('You already have an active request!'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('You already have an active request!'),
+            backgroundColor: Colors.purple.shade300,
           ),
         );
       }
@@ -484,7 +585,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${nearestCart.name} assigned! Arriving in $eta min'),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.deepPurple,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -509,7 +610,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final routePolyline = Polyline(
         polylineId: const PolylineId('active_route'),
         points: activeRoute.polylinePoints,
-        color: Colors.blue.shade700, // Darker, more visible blue
+        color: Colors.deepPurple.shade700, // Deep purple for route
         width: 5, // Thicker line
         // Solid line (no patterns) for better visibility
       );
@@ -555,7 +656,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         buttonAction = null;
       } else {
         buttonText = 'Request Pickup to Stadium';
-        buttonColor = Colors.green;
+        buttonColor = Colors.deepPurple;
         buttonAction = _onRequestPickup;
       }
     }
@@ -567,6 +668,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Cart Tracker'),
+        actions: [
+          // Theme toggle button
+          IconButton(
+            icon: Icon(_isDarkMode ? Icons.light_mode : Icons.dark_mode),
+            tooltip: _isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode',
+            onPressed: _toggleMapTheme,
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -574,6 +683,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           GoogleMap(
             onMapCreated: _onMapCreated,
             initialCameraPosition: AppConstants.initialCameraPosition,
+            style: _mapStyle, // Custom map styling
             markers: _markers, // Display cart and stadium markers
             polygons: _polygons, // Display service area boundary
             polylines: _polylines, // Display route line

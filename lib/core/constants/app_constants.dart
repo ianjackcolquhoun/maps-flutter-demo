@@ -49,9 +49,9 @@ class AppConstants {
     LatLng(39.087184207591065, -84.51869432563144), // Close the polygon
   ];
 
-  /// Stadium location - Great American Ball Park
+  /// Stadium location - Great American Ball Park (West entrance/drop-off)
   /// This is the destination for all ride requests
-  static const LatLng stadiumLocation = LatLng(39.0978, -84.5066);
+  static const LatLng stadiumLocation = LatLng(39.0978, -84.5086);
 
   /// Initial map camera position - centered on service area
   static const CameraPosition initialCameraPosition = CameraPosition(
@@ -60,11 +60,11 @@ class AppConstants {
   );
 
   // Service Area Styling
-  /// Fill color for service area polygon (semi-transparent blue)
-  static const Color serviceAreaFillColor = Color(0x4000BFFF);
+  /// Fill color for service area polygon (very subtle/faint purple)
+  static const Color serviceAreaFillColor = Color(0x10AB47BC);
 
-  /// Border color for service area polygon
-  static const Color serviceAreaBorderColor = Color(0xFF00BFFF);
+  /// Border color for service area polygon (deep purple)
+  static const Color serviceAreaBorderColor = Color(0xFF9C27B0);
 
   /// Border width for service area polygon
   static const double serviceAreaBorderWidth = 2.0;
