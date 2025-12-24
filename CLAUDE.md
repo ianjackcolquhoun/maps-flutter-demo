@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Context
 
-**This is a Flutter DEMO project** - not a production app. The goal is to build a simple maps demo in 4-6 hours to evaluate Flutter's developer experience before committing to it for a larger project.
+**This is a Flutter DEMO project** - not a production app. The goal was to build a maps demo in 4-6 hours to evaluate Flutter's developer experience before committing to it for a larger project.
+
+### Status: ✅ COMPLETE
+
+The demo has been successfully completed! All features are working, UI is polished, and the project achieved its goal of evaluating Flutter's developer experience.
 
 ### Background
 
@@ -13,78 +17,64 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Will use this hands-on experience to decide which framework to use for GESTcarts app
 - Focusing on developer experience, tooling quality, and learning curve
 
-### Demo Scope: "Simple Cart Tracker"
+### Demo Scope: "Cart Tracker with Real Routing"
 
 A single-screen app that shows:
 
-- User's current location on Google Maps
-- 3 mock cart markers (green pins)
-- Tap a cart to see distance from user
-- Info card showing cart details
-- Simple, clean UI
+- User's current location on Google Maps with continuous tracking
+- 3 mock cart markers with custom car icons (purple Material Icons)
+- Service area polygon (downtown Cincinnati) with validation
+- Stadium destination marker (pastel red baseball icon)
+- Request nearest cart → real road routing → animated cart movement
+- Camera following during ride
+- Info card showing cart details, ETA, and distance
+- Custom purple theme throughout
+- Light/dark map style toggle
+- Professional, polished UI
 
 **NOT building:**
 
 - Real backend/API integration
 - Authentication
-- Complex state management
+- Complex state management beyond Riverpod
 - Production-ready architecture
 - Comprehensive testing
 
 ## Evaluation Criteria
 
-While building, pay attention to:
+**Final Ratings (4.6/5 overall)**:
 
-- ⏱️ **Speed**: How fast is hot reload? Compile times?
-- 🐛 **Debugging**: Are error messages helpful?
-- 📝 **Readability**: Is the code intuitive?
-- 📚 **Learning Curve**: Can concepts be figured out easily?
-- 🔧 **Tooling**: Does autocomplete/IDE support help?
-- 📱 **Workflow**: How smooth is iPhone testing?
+- ⏱️ **Hot Reload Speed**: ⭐⭐⭐⭐⭐ Instant, preserves state perfectly
+- 🐛 **Error Messages**: ⭐⭐⭐⭐ Generally helpful, some cryptic async errors
+- 📝 **Code Readability**: ⭐⭐⭐⭐⭐ Dart is clean, intuitive, and concise
+- 📚 **Learning Curve**: ⭐⭐⭐⭐ Steep at first, excellent documentation
+- 🔧 **IDE Support**: ⭐⭐⭐⭐⭐ Outstanding autocomplete and navigation
+- 📱 **iPhone Testing**: ⭐⭐⭐⭐ Smooth workflow after Xcode setup
+- 🎨 **State Management**: ⭐⭐⭐⭐⭐ Riverpod is powerful and intuitive
+- 🎬 **Animation**: ⭐⭐⭐⭐⭐ Stream-based animation is elegant
 
-## Demo Steps
+## Completed Features
 
-### Step 1: iOS Configuration (15-20 min)
+### Core Functionality
+- ✅ Real-time GPS location tracking with continuous stream updates
+- ✅ Service area validation (point-in-polygon ray casting algorithm)
+- ✅ Nearest cart assignment using Haversine distance
+- ✅ Real road routing via Google Directions API (no straight-line fallbacks)
+- ✅ Smooth cart animation at 6x speed (100ms update intervals)
+- ✅ Camera following during active rides (zoom level 17)
+- ✅ Request status transitions (assigned → inProgress → completed)
+- ✅ Dynamic info card with ETA and distance calculations
+- ✅ Full ride lifecycle management (request → pickup → dropoff → exit)
 
-- Get Google Maps API key
-- Configure AppDelegate.swift
-- Add location permissions to Info.plist
-
-### Step 2: Basic Map View (30 min)
-
-- Replace main.dart with basic map
-- Get map rendering on iPhone
-
-### Step 3: Mock Cart Data (20 min)
-
-- Create simple Cart class
-- Add 3 mock cart objects
-
-### Step 4: Display Markers (45 min)
-
-- Show carts as green markers
-- Make markers tappable
-- Test hot reload
-
-### Step 5: User Location (30 min)
-
-- Request location permission
-- Show user as blue marker
-- Center map on user
-
-### Step 6: Distance Calculation (45 min)
-
-- Calculate distance between user and cart
-- Show info card on cart tap
-- Display "X miles away"
-
-### Step 7: Polish (30-45 min)
-
-- Add navigation button (camera animation)
-- Add recenter floating button
-- Style the info card
-
-**Total Time Budget: 4-6 hours**
+### UI & Theming
+- ✅ Custom purple theme throughout (deep purple primary color)
+- ✅ Purple snackbar announcements (different shades for info/success)
+- ✅ Light/dark map style toggle in AppBar
+- ✅ Custom map styles (clean minimal light + dark mode)
+- ✅ Very subtle service area fill (6% opacity purple)
+- ✅ Custom car icons (Material Icons, 30px purple)
+- ✅ Custom stadium icon (baseball, 40px pastel red)
+- ✅ Professional polish and consistent theming
 
 ## Common Commands
 
@@ -126,12 +116,43 @@ While building, pay attention to:
 
 ```
 lib/
-└── main.dart          # All demo code in one file (intentionally simple)
+├── main.dart                           # App entry point with purple theme
+├── core/
+│   ├── constants/
+│   │   ├── app_constants.dart          # Service area, colors, config
+│   │   ├── map_styles.dart             # Light/dark map style loading
+│   │   ├── secrets.dart                # API key (gitignored)
+│   │   └── secrets.dart.template       # Template for team
+│   └── utils/
+│       └── geo_utils.dart              # Point-in-polygon, distance calc
+└── features/
+    └── map/
+        ├── models/
+        │   ├── cart.dart               # Cart data model
+        │   ├── ride_request.dart       # Request with status enum
+        │   └── route.dart              # Route with polyline/distance/ETA
+        ├── providers/
+        │   └── ride_providers.dart     # All Riverpod state providers
+        ├── screens/
+        │   └── map_screen.dart         # Main map screen (600+ lines)
+        ├── services/
+        │   ├── assignment_service.dart # Nearest cart logic
+        │   ├── cart_animation_service.dart # Stream-based animation
+        │   ├── directions_service.dart # Google Directions API
+        │   └── location_service.dart   # GPS permissions & tracking
+        └── widgets/
+            └── cart_info_card.dart     # Info card UI component
+
+assets/
+└── map_styles/
+    ├── clean_minimal.json              # Light map theme
+    └── dark.json                       # Dark map theme
 
 ios/
 ├── Runner/
-│   ├── AppDelegate.swift    # Google Maps API key configuration
-│   └── Info.plist           # Location permissions
+│   ├── AppDelegate.swift               # Google Maps API key (gitignored)
+│   ├── AppDelegate.swift.template      # Template for team
+│   └── Info.plist                      # Location permissions
 ```
 
 ### Key Dependencies
@@ -139,29 +160,38 @@ ios/
 - **google_maps_flutter** (^2.5.0) - Google Maps widget integration
 - **geolocator** (^10.1.0) - Location services and GPS functionality
 - **permission_handler** (^11.0.1) - Runtime permissions management
+- **flutter_riverpod** (^2.4.9) - State management
+- **uuid** (^4.0.0) - Unique ID generation for requests
+- **flutter_polyline_points** (^2.0.0) - Decode Google Directions polylines
 
 ### Development Notes
 
-- **Single-file architecture** - Everything in main.dart for simplicity
-- **No BLoC/state management** - Using StatefulWidget with setState
-- **Mock data** - Hardcoded cart coordinates (no API)
+- **Feature-based architecture** - Clean separation of concerns
+- **Riverpod state management** - Provider pattern for reactive state
+- **Real API integration** - Google Directions API for routing
+- **Stream-based animation** - `Stream.periodic()` for cart movement
 - **iOS-first** - Android not configured yet
-- Uses Material Design
+- **Purple theme** - Deep purple primary color throughout
 
 ## iOS-Specific Setup
 
 ### Google Maps API Key
 
-1. Required in `ios/Runner/AppDelegate.swift`
-2. Get from Google Cloud Console
-3. Enable "Maps SDK for iOS"
+1. Required in `ios/Runner/AppDelegate.swift` (for Maps SDK)
+2. Required in `lib/core/constants/secrets.dart` (for Directions API)
+3. Get from Google Cloud Console
+4. Enable both "Maps SDK for iOS" and "Directions API"
+
+**Why two locations?** Swift can't import Dart constants, so API key needed in both places:
+- AppDelegate.swift → Maps SDK rendering
+- secrets.dart → Directions API REST calls
 
 ### Location Permissions
 
 Required keys in `ios/Runner/Info.plist`:
 
-- `NSLocationWhenInUseUsageDescription`
-- `io.flutter.embedded_views_preview`
+- `NSLocationWhenInUseUsageDescription` - Location permission message
+- `io.flutter.embedded_views_preview` - Required for Google Maps plugin
 
 ### First Run on iPhone
 
@@ -170,27 +200,49 @@ Required keys in `ios/Runner/Info.plist`:
 - Select your Apple ID as Team in Signing & Capabilities
 - Trust developer certificate on iPhone: Settings > General > VPN & Device Management
 
-## Code Style for Demo
+## Code Style
 
-**Keep it simple and readable:**
+**Clean, production-quality code:**
 
-- ✅ Single file (main.dart)
-- ✅ Comments explaining concepts
-- ✅ Clear variable names
-- ✅ Minimal nesting
-- ❌ No complex abstractions
-- ❌ No over-engineering
+- ✅ Feature-based architecture with clear separation
+- ✅ Comprehensive comments explaining concepts
+- ✅ Clear variable names and consistent naming conventions
+- ✅ Proper error handling (no silent failures)
+- ✅ Stream cleanup in dispose() methods
+- ✅ Async/await patterns for API calls
+- ✅ Type-safe models with immutable fields
 
-**This is learning code, not production code.**
+**This is learning code, but production-quality.**
 
-## After Demo
+## Key Technical Decisions
 
-Document your experience:
+### Routing
+- **MUST use real roads** - Google Directions API required
+- **NO fallback to straight lines** - Honest error messages if API fails
+- **Route includes 3 waypoints** - Cart → User (pickup) → Stadium (dropoff)
 
-- What felt intuitive vs. confusing?
-- How long did each step actually take?
-- Would you enjoy working in Flutter daily?
-- Compare with React Native demo
+### Animation
+- **Stream-based** - `Stream.periodic()` with 100ms intervals
+- **6x speed multiplier** - Makes demo engaging (15mph → 90mph animation)
+- **Linear interpolation (lerp)** - Smooth movement between polyline points
+- **Automatic status transitions** - Changes from assigned → inProgress → completed
+
+### Camera Following
+- **Simplified approach** - Just follow cart during inProgress status
+- **Zoom level 17** - Close enough to see detail, not too zoomed in
+- **No interaction detection** - Removed complexity that didn't work reliably
+
+### Map Styling
+- **Custom JSON styles** - Light and dark themes in assets
+- **Theme toggle** - IconButton in AppBar for quick switching
+- **Cached loading** - Load once, reuse for performance
+- **Very subtle service area** - 6% opacity so it doesn't overpower
+
+### Custom Icons
+- **Material Icons rendered as markers** - `Icons.directions_car` and `Icons.sports_baseball`
+- **Canvas-based rendering** - Convert IconData to BitmapDescriptor
+- **White circle backgrounds** - Ensures visibility on all map styles
+- **Size differentiation** - Cars 30px, stadium 40px
 
 ## Quick Reference
 
@@ -202,65 +254,143 @@ var name = 'Cart';           // Type inference
 String id = 'CART-001';      // Explicit type
 double lat = 38.9072;        // Decimals
 
-// Classes
+// Classes with immutable fields
 class Cart {
   final String id;           // final = immutable
-  final double lat;
-  final double lng;
+  final double latitude;
+  final double longitude;
 
-  Cart(this.id, this.lat, this.lng);  // Constructor
+  const Cart({
+    required this.id,
+    required this.latitude,
+    required this.longitude,
+  });
 }
 
 // Lists
 List<Cart> carts = [
-  Cart('CART-001', 38.9072, -77.0369),
+  Cart(id: 'CART-001', latitude: 38.9072, longitude: -77.0369),
 ];
 
 // Async/Await
 Future<Position> getUserLocation() async {
   return await Geolocator.getCurrentPosition();
 }
+
+// Streams
+Stream<CartAnimationState> animateCart() {
+  return Stream.periodic(Duration(milliseconds: 100), (count) {
+    // Return animation state
+  });
+}
 ```
 
 ### Common Flutter Patterns
 
 ```dart
-// StatefulWidget (has state that changes)
-class MyWidget extends StatefulWidget {
+// ConsumerStatefulWidget with Riverpod
+class MapScreen extends ConsumerStatefulWidget {
+  const MapScreen({super.key});
+
   @override
-  State<MyWidget> createState() => _MyWidgetState();
+  ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MyWidgetState extends State<MyWidget> {
-  int counter = 0;
+class _MapScreenState extends ConsumerState<MapScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize
+  }
 
-  void increment() {
-    setState(() {      // Tells Flutter to rebuild
-      counter++;
-    });
+  @override
+  void dispose() {
+    // Clean up streams, controllers
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Text('Count: $counter');
+    // Watch providers for reactive updates
+    final userPos = ref.watch(userPositionProvider);
+    final activeRequest = ref.watch(activeRequestProvider);
+
+    return Scaffold(
+      body: GoogleMap(/* ... */),
+    );
   }
 }
+```
+
+### Riverpod Provider Patterns
+
+```dart
+// State provider (simple state)
+final userPositionProvider = StateProvider<Position?>((ref) => null);
+
+// Provider (computed value)
+final locationServiceProvider = Provider((ref) => LocationService());
+
+// Reading vs Watching
+ref.read(provider);   // One-time read (in callbacks, initState)
+ref.watch(provider);  // Subscribe to changes (in build method)
 ```
 
 ## Resources
 
 - [Official Flutter Docs](https://docs.flutter.dev)
 - [Dart Language Tour](https://dart.dev/guides/language/language-tour)
+- [Riverpod Documentation](https://riverpod.dev)
 - [google_maps_flutter Package](https://pub.dev/packages/google_maps_flutter)
 - [geolocator Package](https://pub.dev/packages/geolocator)
+- [Google Directions API](https://developers.google.com/maps/documentation/directions)
+
+## Bugs Fixed During Development
+
+1. **Location stream not updating button state** → Switched to continuous `getPositionStream()`
+2. **Route line not visible** → Darker purple, width 5, solid line
+3. **Info card blocking FAB** → Moved to top of screen
+4. **Import conflict with Route class** → Added alias: `as route_model`
+5. **Camera not following cart** → Simplified to basic following during ride
+6. **Icons too large** → Reduced from 80px to 30px
+7. **Service area too prominent** → Reduced opacity from 25% to 6%
+
+## Final Evaluation
+
+### What Went Well ✅
+- Hot reload made iteration incredibly fast
+- Riverpod state management was intuitive
+- Google Maps Flutter package is mature and well-documented
+- Feature-based architecture scaled nicely
+- Stream-based animation was elegant
+- Custom map styling was straightforward
+- Purple theme customization was easy
+- Material Icons as map markers worked perfectly
+
+### What Was Challenging ⚠️
+- iOS native configuration required Xcode knowledge
+- Async error handling needed careful consideration
+- Google Directions API has usage limits to monitor
+- Some deprecation warnings in packages
+- Camera following had edge cases (resolved by simplifying)
+
+### Would I Choose Flutter? ✅
+
+**YES** - For this type of mapping/location app, Flutter excelled. The developer experience was smooth, hot reload was game-changing, and the final result looks professional. The ecosystem is mature and the documentation is excellent.
+
+**Recommendation**: Strong candidate for GESTcarts MVP.
 
 ## Project Goal Reminder
 
-**The point is NOT to build perfect code.** The point is to:
+**The point was to evaluate Flutter's developer experience.** The project successfully achieved this goal:
 
-1. Get hands-on experience with Flutter
-2. Feel the developer workflow
-3. Evaluate if you'd enjoy working in Flutter
-4. Make an informed framework decision
+1. ✅ Got hands-on experience with Flutter
+2. ✅ Felt the developer workflow (hot reload, tooling, IDE support)
+3. ✅ Evaluated if working in Flutter would be enjoyable
+4. ✅ Can now make an informed framework decision
 
-Code quality doesn't matter. Learning experience does. 🚀
+**Result**: Flutter rated 4.6/5 for this use case. Excellent candidate for the full GESTcarts app.
+
+---
+
+**Next Step**: Build React Native comparison demo, then make final framework decision.
